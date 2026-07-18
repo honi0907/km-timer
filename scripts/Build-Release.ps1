@@ -46,8 +46,13 @@ if (-not $remote) {
 }
 
 Write-Host "== GitHub Release $tag =="
-$existing = gh release view $tag 2>$null
-if ($LASTEXITCODE -eq 0) {
+$existing = $null
+try {
+    $existing = gh release view $tag 2>$null
+} catch {
+    $existing = $null
+}
+if ($LASTEXITCODE -eq 0 -and $existing) {
     throw "Release $tag already exists. Bump version or delete the release first."
 }
 
