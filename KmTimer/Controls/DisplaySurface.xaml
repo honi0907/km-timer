@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<UserControl
+
+    x:Class="KmTimer.Controls.DisplaySurface"
+
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+    xmlns:helpers="using:KmTimer.Helpers"
+
+    xmlns:models="using:KmTimer.Models"
+
+    xmlns:vm="using:KmTimer.ViewModels">
+
+
+
+    <UserControl.Resources>
+
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVis" />
+
+        <helpers:HexToBrushConverter x:Key="HexToBrush" />
+
+        <Storyboard x:Name="BlinkStoryboard" RepeatBehavior="Forever" AutoReverse="True">
+
+            <DoubleAnimation
+
+                Storyboard.TargetName="TimerTextBlock"
+
+                Storyboard.TargetProperty="Opacity"
+
+                From="1" To="0.75" Duration="0:0:0.5" />
+
+            <DoubleAnimation
+
+                Storyboard.TargetName="TimerScale"
+
+                Storyboard.TargetProperty="ScaleX"
+
+                From="1" To="1.05" Duration="0:0:0.5" />
+
+            <DoubleAnimation
+
+                Storyboard.TargetName="TimerScale"
+
+                Storyboard.TargetProperty="ScaleY"
+
+                From="1" To="1.05" Duration="0:0:0.5" />
+
+        </Storyboard>
+
+        <Storyboard x:Name="BgBlinkStoryboard" RepeatBehavior="Forever" AutoReverse="True">
+            <DoubleAnimation
+                Storyboard.TargetName="BgBlinkOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="0"
+                To="0.55"
+                Duration="0:0:0.35" />
+        </Storyboard>
+
+    </UserControl.Resources>
+
+
+
+    <Grid x:Name="RootGrid" SizeChanged="RootGrid_SizeChanged">
+
+        <Grid.Background>
+
+            <Binding Path="BgColor" Converter="{StaticResource HexToBrush}" ConverterParameter="#0F172A" />
+
+        </Grid.Background>
+
+        <Border
+            x:Name="BgBlinkOverlay"
+            Background="White"
+            Opacity="0"
+            IsHitTestVisible="False" />
+
+        <TextBlock
+
+            x:Name="ClockTextBlock"
+
+            Text="{Binding ClockText}"
+
+            FontFamily="Consolas"
+
+            FontWeight="SemiBold">
+
+            <TextBlock.Foreground>
+
+                <Binding Path="ClockColor" Converter="{StaticResource HexToBrush}" ConverterParameter="#94A3B8" />
+
+            </TextBlock.Foreground>
+
+        </TextBlock>
+
+
+
+        <Grid Padding="40">
+
+            <Grid.RowDefinitions>
+
+                <RowDefinition Height="*" />
+
+                <RowDefinition Height="Auto" />
+
+            </Grid.RowDefinitions>
+
+
+
+            <TextBlock
+
+                x:Name="TimerTextBlock"
+
+                Grid.Row="0"
+
+                Text="{Binding TimerText}"
+
+                Foreground="{Binding TimerBrush}"
+
+                FontFamily="Consolas"
+
+                FontWeight="Bold"
+
+                HorizontalAlignment="Center"
+
+                VerticalAlignment="Center"
+
+                RenderTransformOrigin="0.5,0.5">
+
+                <TextBlock.RenderTransform>
+
+                    <ScaleTransform x:Name="TimerScale" />
+
+                </TextBlock.RenderTransform>
+
+            </TextBlock>
+
+
+
+            <Border
+
+                x:Name="KanpeBorder"
+
+                Grid.Row="1"
+
+                Margin="0,0,0,20"
+
+                Padding="20"
+
+                CornerRadius="16"
+
+                HorizontalAlignment="Stretch"
+
+                MaxWidth="1200"
+
+                Background="#66000000"
+
+                BorderBrush="#334155"
+
+                BorderThickness="1"
+
+                Visibility="Collapsed">
+
+                <TextBlock
+
+                    x:Name="KanpeTextBlock"
+
+                    TextWrapping="WrapWholeWords"
+
+                    TextAlignment="Center"
+
+                    FontWeight="ExtraBold"
+
+                    HorizontalAlignment="Stretch">
+
+                    <TextBlock.Foreground>
+
+                        <Binding Path="KanpeColor" Converter="{StaticResource HexToBrush}" ConverterParameter="#FFFFFF" />
+
+                    </TextBlock.Foreground>
+
+                </TextBlock>
+
+            </Border>
+
+        </Grid>
+
+    </Grid>
+
+</UserControl>
+

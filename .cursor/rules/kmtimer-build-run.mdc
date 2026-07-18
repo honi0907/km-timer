@@ -1,0 +1,72 @@
+---
+description: KM Timer のビルド・実行・リリース手順
+alwaysApply: true
+pairedWith: BUILD_RULES.md
+---
+
+# KM Timer — Build & Run
+
+## ビルド前
+
+```powershell
+Stop-Process -Name KmTimer -Force -ErrorAction SilentlyContinue
+```
+
+## 開発ビルド
+
+```powershell
+dotnet build "KmTimer\KmTimer.csproj" -p:Platform=x64
+```
+
+実行（Unpackaged）:
+
+```powershell
+dotnet run --project "KmTimer\KmTimer.csproj" -p:Platform=x64
+```
+
+## リリース（Setup + ポータブル ZIP）
+
+```powershell
+.\scripts\Build-Release.ps1
+```
+
+ビルドのみ（GitHub なし）:
+
+```powershell
+.\scripts\Build-Release.ps1 -DryRun
+```
+
+| 成果物 | 出力先 |
+|--------|--------|
+| Setup（GitHub / オンライン更新） | `dist\KmTimer-{version}-x64-Setup.exe` |
+| ポータブル ZIP | `dist\KmTimer-{version}-x64-portable.zip` |
+| publish フォルダ | `dist\publish\win-x64\` |
+
+- **毎回** Setup とポータブル ZIP の両方を生成する。
+- `dist` には当該バージョンの成果物のみ残す。
+
+### GitHub Release
+
+| 層 | 載せるもの |
+|----|-----------|
+| **GitHub Release** | Setup.exe + portable.zip |
+| **オンライン更新** | Setup.exe のみ |
+
+- リポジトリ: `honi0907/km-timer`
+- tag: `v{version}`
+- 開発ビルド（`bin/`）では自己更新を適用しない
+
+## バージョン
+
+- `KmTimer.csproj` の `<Version>` / `<AssemblyVersion>` / `<FileVersion>` を揃える。
+- パッチは **0〜9**。`1.0.9` の次は `1.1.0`（`1.0.10` 不可）。
+
+## オンライン更新
+
+システム設定 → **オンライン更新を確認**（Setup を取得して起動）
+
+## アーキテクチャ要点
+
+- Unpackaged（`WindowsPackageType=None`）
+- 制御: `MainWindow` / `MainPage`、出力: `OutputWindow`（第2モニターは Win32 フルスクリーン）
+- 設定: `%LocalAppData%\KmTimer\preset-*.json`

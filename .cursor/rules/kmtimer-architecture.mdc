@@ -1,0 +1,31 @@
+---
+description: KM Timer のアーキテクチャ
+globs: "**/*"
+alwaysApply: true
+---
+
+# KM Timer
+
+## 概要
+
+- WinUI 3 + MVVM（CommunityToolkit.Mvvm）のタイマー／カンペアプリ
+- IC_Timer（Electron）相当: 制御パネル + 出力ウィンドウ
+- ターゲット: `net8.0-windows10.0.26100.0`、Unpackaged（`WindowsPackageType=None`）
+
+## このプロジェクトだけのルール
+
+- タイマー状態の正は `ViewModels/MainViewModel.cs`
+- 設定永続化は `%LocalAppData%\KmTimer\preset-*.json`（`SettingsStore`）
+- 制御ウィンドウを閉じたらアプリ終了（出力も閉じる）
+- 出力フルスクリーンは playbook の第2ウィンドウ手順に従う（`MoveAndResize` と `WS_POPUP` を併用しない）
+
+## 主要ファイル
+
+| やりたいこと | ファイル |
+|-------------|---------|
+| 起動 | `App.xaml.cs`, `Program.cs` |
+| 制御 UI | `MainPage.xaml`, `MainWindow.xaml` |
+| 出力 | `OutputWindow.xaml(.cs)` |
+| 表示共通 | `Controls/DisplaySurface.xaml` |
+| ロジック | `ViewModels/MainViewModel.cs` |
+| モニター配置 | `Helpers/MonitorHelper.cs`, `Helpers/OutputWindowLayout.cs` |

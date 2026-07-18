@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "KmTimer (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "KmTimer (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
