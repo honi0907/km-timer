@@ -1,4 +1,5 @@
 using KmTimer.Updates;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -10,7 +11,7 @@ public static class OnlineUpdateUiHelper
     private static int _busy;
 
     public static async Task RunAsync(
-        XamlRoot xamlRoot,
+        XamlRoot? xamlRoot,
         Action<string> setStatus,
         Func<Task>? beforeExitAsync = null)
     {
@@ -20,20 +21,82 @@ public static class OnlineUpdateUiHelper
             return;
         }
 
+        var dispatcher = DispatcherQueue.GetForCurrentThread()
+            ?? throw new InvalidOperationException("UI スレッド以外から更新を開始できません。");
+
+        void SetStatusSafe(string message)
+        {
+            if (dispatcher.HasThreadAccess)
+            {
+                setStatus(message);
+                return;
+            }
+
+            dispatcher.TryEnqueue(() => setStatus(message));
+        }
+
         try
         {
-            var progress = new Progress<OnlineUpdateProgress>(p => setStatus(p.Message));
+            if (xamlRoot is null)
+            {
+                SetStatusSafe("画面の準備が完了していません。もう一度お試しください。");
+                return;
+            }
+
+            var progress = new Progress<OnlineUpdateProgress>(p => SetStatusSafe(p.Message));
             var result = await Coordinator.RunAsync(
-                message => ConfirmAsync(xamlRoot, message),
+                message => ConfirmOnUiAsync(dispatcher, xamlRoot, message),
                 progress,
                 beforeExitAsync,
-                () => Application.Current.Exit());
+                () =>
+                {
+                    if (dispatcher.HasThreadAccess)
+                        Application.Current.Exit();
+                    else
+                        dispatcher.TryEnqueue(() => Application.Current.Exit());
+                });
 
-            setStatus(result.Message);
+            SetStatusSafe(result.Message);
+        }
+        catch (Exception ex)
+        {
+            SetStatusSafe($"更新に失敗しました: {ex.Message}");
         }
         finally
         {
             Interlocked.Exchange(ref _busy, 0);
+        }
+    }
+
+    private static Task<bool> ConfirmOnUiAsync(DispatcherQueue dispatcher, XamlRoot xamlRoot, string message)
+    {
+        if (dispatcher.HasThreadAccess)
+            return ConfirmAsync(xamlRoot, message);
+
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var queued = dispatcher.TryEnqueue(() =>
+        {
+            _ = CompleteConfirmAsync(tcs, xamlRoot, message);
+        });
+
+        if (!queued)
+            tcs.TrySetResult(false);
+
+        return tcs.Task;
+    }
+
+    private static async Task CompleteConfirmAsync(
+        TaskCompletionSource<bool> tcs,
+        XamlRoot xamlRoot,
+        string message)
+    {
+        try
+        {
+            tcs.TrySetResult(await ConfirmAsync(xamlRoot, message));
+        }
+        catch (Exception ex)
+        {
+            tcs.TrySetException(ex);
         }
     }
 

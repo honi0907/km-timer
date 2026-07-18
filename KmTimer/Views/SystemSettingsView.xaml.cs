@@ -37,6 +37,10 @@ public sealed partial class SystemSettingsView : UserControl
                 XamlRoot,
                 status => UpdateStatusText.Text = status);
         }
+        catch (Exception ex)
+        {
+            UpdateStatusText.Text = $"更新に失敗しました: {ex.Message}";
+        }
         finally
         {
             OnlineUpdateButton.IsEnabled = true;
