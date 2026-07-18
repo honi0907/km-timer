@@ -1,6 +1,7 @@
 using KmTimer.Models;
 using KmTimer.Services;
 using KmTimer.ViewModels;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -30,20 +31,32 @@ public sealed partial class SystemSettingsView : UserControl
 
     private async void OnlineUpdateButton_Click(object sender, RoutedEventArgs e)
     {
+        var dispatcher = DispatcherQueue.GetForCurrentThread() ?? App.DispatcherQueue;
         OnlineUpdateButton.IsEnabled = false;
         try
         {
             await OnlineUpdateUiHelper.RunAsync(
                 XamlRoot,
-                status => UpdateStatusText.Text = status);
+                status => RunOnUi(dispatcher, () => UpdateStatusText.Text = status));
         }
         catch (Exception ex)
         {
-            UpdateStatusText.Text = $"更新に失敗しました: {ex.Message}";
+            RunOnUi(dispatcher, () => UpdateStatusText.Text = $"更新に失敗しました: {ex.Message}");
         }
         finally
         {
-            OnlineUpdateButton.IsEnabled = true;
+            RunOnUi(dispatcher, () => OnlineUpdateButton.IsEnabled = true);
         }
+    }
+
+    private static void RunOnUi(DispatcherQueue dispatcher, Action action)
+    {
+        if (dispatcher.HasThreadAccess)
+        {
+            action();
+            return;
+        }
+
+        dispatcher.TryEnqueue(() => action());
     }
 }

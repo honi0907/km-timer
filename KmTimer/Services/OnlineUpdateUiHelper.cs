@@ -21,19 +21,14 @@ public static class OnlineUpdateUiHelper
             return;
         }
 
-        var dispatcher = DispatcherQueue.GetForCurrentThread()
-            ?? throw new InvalidOperationException("UI スレッド以外から更新を開始できません。");
+        // WinUI には SynchronizationContext が無いため、await 継続はスレッドプールに乗る。
+        // UI 触る処理は必ず App.DispatcherQueue 経由にする。
+        var dispatcher = App.DispatcherQueue
+            ?? DispatcherQueue.GetForCurrentThread()
+            ?? throw new InvalidOperationException("DispatcherQueue が取得できません。");
 
-        void SetStatusSafe(string message)
-        {
-            if (dispatcher.HasThreadAccess)
-            {
-                setStatus(message);
-                return;
-            }
-
-            dispatcher.TryEnqueue(() => setStatus(message));
-        }
+        void SetStatusSafe(string message) =>
+            RunOnUi(dispatcher, () => setStatus(message));
 
         try
         {
@@ -43,18 +38,13 @@ public static class OnlineUpdateUiHelper
                 return;
             }
 
+            // Progress は SyncContext 無しだとスレッドプールでハンドラを呼ぶため使わず、明示的に UI へ投げる。
             var progress = new Progress<OnlineUpdateProgress>(p => SetStatusSafe(p.Message));
             var result = await Coordinator.RunAsync(
                 message => ConfirmOnUiAsync(dispatcher, xamlRoot, message),
                 progress,
                 beforeExitAsync,
-                () =>
-                {
-                    if (dispatcher.HasThreadAccess)
-                        Application.Current.Exit();
-                    else
-                        dispatcher.TryEnqueue(() => Application.Current.Exit());
-                });
+                () => RunOnUi(dispatcher, () => Application.Current.Exit())).ConfigureAwait(false);
 
             SetStatusSafe(result.Message);
         }
@@ -68,18 +58,34 @@ public static class OnlineUpdateUiHelper
         }
     }
 
+    private static void RunOnUi(DispatcherQueue dispatcher, Action action)
+    {
+        if (dispatcher.HasThreadAccess)
+        {
+            action();
+            return;
+        }
+
+        _ = dispatcher.TryEnqueue(() =>
+        {
+            try
+            {
+                action();
+            }
+            catch
+            {
+                // UI 破棄後などは無視
+            }
+        });
+    }
+
     private static Task<bool> ConfirmOnUiAsync(DispatcherQueue dispatcher, XamlRoot xamlRoot, string message)
     {
         if (dispatcher.HasThreadAccess)
             return ConfirmAsync(xamlRoot, message);
 
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var queued = dispatcher.TryEnqueue(() =>
-        {
-            _ = CompleteConfirmAsync(tcs, xamlRoot, message);
-        });
-
-        if (!queued)
+        if (!dispatcher.TryEnqueue(() => _ = CompleteConfirmAsync(tcs, xamlRoot, message)))
             tcs.TrySetResult(false);
 
         return tcs.Task;
